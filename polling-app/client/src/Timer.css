@@ -1,0 +1,98 @@
+.timer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 50px;
+  background: white;
+  border: 4px solid;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  min-width: 250px;
+  transition: all 0.3s ease;
+}
+
+.timer-icon {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  animation: swing 1s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+.timer-digits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: "Courier New", "Monaco", monospace;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.timer-digits .digit {
+  font-size: 4rem;
+  letter-spacing: -2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.timer-digits .colon {
+  font-size: 3.5rem;
+  padding: 0 4px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.timer-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 12px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.timer-expired {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--danger-color);
+  animation: pulse 1s infinite;
+  padding: 10px 20px;
+  background: #fee2e2;
+  border-radius: 8px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
