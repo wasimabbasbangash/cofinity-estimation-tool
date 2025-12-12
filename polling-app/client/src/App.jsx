@@ -395,14 +395,24 @@ function App() {
                 <label>Estimation Options *</label>
                 <div className="options-grid">
                   {[1, 2, 3, 5, 8, 13, 21, 34, 55, 89].map((value) => (
-                    <div key={value} className="option-checkbox">
+                    <div
+                      key={value}
+                      className="option-checkbox"
+                      onClick={() => toggleOption(value)}
+                    >
                       <input
                         type="checkbox"
                         id={`option-${value}`}
                         checked={selectedOptions.has(value)}
                         onChange={() => toggleOption(value)}
+                        onClick={(e) => e.stopPropagation()}
                       />
-                      <label htmlFor={`option-${value}`}>{value}</label>
+                      <label
+                        htmlFor={`option-${value}`}
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {value}
+                      </label>
                     </div>
                   ))}
                 </div>
