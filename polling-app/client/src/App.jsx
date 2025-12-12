@@ -3,6 +3,8 @@ import Timer from "./Timer";
 import AvatarPicker from "./AvatarPicker";
 import AvatarDoodle from "./AvatarDoodle";
 
+// In production, use /api (Vercel rewrites handle this)
+// In development, use /api (Vite proxy handles this)
 const API_BASE = "/api";
 
 function App() {

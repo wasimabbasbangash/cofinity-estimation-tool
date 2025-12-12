@@ -1,0 +1,16 @@
+{
+  "name": "polling-app",
+  "version": "1.0.0",
+  "description": "Lightweight polling app for ticket estimation",
+  "type": "module",
+  "scripts": {
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  },
+  "devDependencies": {}
+}
+
