@@ -1,13 +1,14 @@
-import { connectToDatabase, getActivePoll } from '../../../lib/db.js';
+import { connectToDatabase, getActivePoll } from "../../../lib/db.js";
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const { db } = await connectToDatabase();
-    const activePoll = await getActivePoll(db);
+    const roomCode = req.query.roomCode || null;
+    const activePoll = await getActivePoll(db, roomCode);
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
@@ -27,8 +28,7 @@ export default async function handler(req, res) {
     // If poll is closed, return full poll with votes
     res.json(activePoll);
   } catch (error) {
-    console.error('Error fetching poll:', error);
-    res.status(500).json({ error: 'Failed to fetch poll' });
+    console.error("Error fetching poll:", error);
+    res.status(500).json({ error: "Failed to fetch poll" });
   }
 }
-

@@ -1,13 +1,14 @@
-import { connectToDatabase, getActivePoll } from '../../../lib/db.js';
+import { connectToDatabase, getActivePoll } from "../../../lib/db.js";
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const { db } = await connectToDatabase();
-    const activePoll = await getActivePoll(db);
+    const roomCode = req.query.roomCode || null;
+    const activePoll = await getActivePoll(db, roomCode);
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
 
     // Auto-disable timer on server if expired
     if (activePoll.timerActive && timeRemaining === 0) {
-      const polls = db.collection('polls');
+      const polls = db.collection("polls");
       await polls.updateOne(
         { id: activePoll.id },
         { $set: { timerActive: false } }
@@ -33,8 +34,7 @@ export default async function handler(req, res) {
       timeRemaining: timeRemaining ? Math.ceil(timeRemaining / 1000) : null,
     });
   } catch (error) {
-    console.error('Error fetching timer:', error);
-    res.status(500).json({ error: 'Failed to fetch timer' });
+    console.error("Error fetching timer:", error);
+    res.status(500).json({ error: "Failed to fetch timer" });
   }
 }
-

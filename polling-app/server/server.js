@@ -6,35 +6,53 @@ const PORT = process.env.PORT || 3001;
 
 // CORS configuration - allow Vercel and localhost
 const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.FRONTEND_URL
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || !process.env.FRONTEND_URL) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || !process.env.FRONTEND_URL) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  })
+);
 app.use(express.json());
 
-// In-memory storage - only one poll at a time
-let activePoll = null;
-let timerEndTime = null;
+// In-memory storage - room-based polls
+// Structure: { roomCode: { id, question, options, createdBy, votes[], status, closedBy, timerActive, timerEndTime } }
+let pollsByRoom = {};
 
-// Structure: { id, question, options, createdBy, votes[], status, closedBy, timerActive, timerEndTime }
+// Helper function to generate room code
+function generateRoomCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
-// Ticket 2: In-Memory Poll Structure
-// Structure: { id, question, options, createdBy, votes[], status }
+// Helper function to get poll by room code
+function getPollByRoom(roomCode) {
+  if (!roomCode) {
+    // Legacy support: get first available poll
+    const roomCodes = Object.keys(pollsByRoom);
+    if (roomCodes.length === 0) return null;
+    return pollsByRoom[roomCodes[0]];
+  }
+  return pollsByRoom[roomCode] || null;
+}
 
 // Ticket 3: Create Poll API
 app.post("/poll/create", (req, res) => {
-  const { question, options, createdBy } = req.body;
+  const { question, options, createdBy, roomCode } = req.body;
 
   if (!question || !options || !createdBy) {
     return res
@@ -46,9 +64,13 @@ app.post("/poll/create", (req, res) => {
     return res.status(400).json({ error: "Options must be a non-empty array" });
   }
 
-  // Ticket 10: Data Reset on New Poll - clear old poll
-  activePoll = {
+  // Use provided room code or generate new one
+  let finalRoomCode = roomCode || generateRoomCode();
+
+  // Create new poll for this room
+  const newPoll = {
     id: Date.now().toString(),
+    roomCode: finalRoomCode,
     question,
     options,
     createdBy,
@@ -59,20 +81,22 @@ app.post("/poll/create", (req, res) => {
     timerEndTime: null,
   };
 
-  timerEndTime = null;
+  pollsByRoom[finalRoomCode] = newPoll;
 
-  res.json({ success: true, poll: activePoll });
+  res.json({ success: true, poll: newPoll, roomCode: finalRoomCode });
 });
 
 // Ticket 4: Vote on Poll API
 app.post("/poll/vote", (req, res) => {
-  const { name, value, avatar } = req.body;
+  const { name, value, avatar, roomCode } = req.body;
 
   if (!name || value === undefined) {
     return res
       .status(400)
       .json({ error: "Missing required fields: name, value" });
   }
+
+  const activePoll = getPollByRoom(roomCode);
 
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
@@ -124,7 +148,9 @@ app.post("/poll/vote", (req, res) => {
 
 // Ticket 5: Close Poll API
 app.post("/poll/close", (req, res) => {
-  const { userName } = req.body;
+  const { userName, roomCode } = req.body;
+
+  const activePoll = getPollByRoom(roomCode);
 
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
@@ -148,6 +174,9 @@ app.post("/poll/close", (req, res) => {
 
 // Ticket 6: Get Poll + Results API
 app.get("/poll", (req, res) => {
+  const roomCode = req.query.roomCode || null;
+  const activePoll = getPollByRoom(roomCode);
+
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
   }
@@ -168,6 +197,9 @@ app.get("/poll", (req, res) => {
 });
 
 app.get("/poll/results", (req, res) => {
+  const roomCode = req.query.roomCode || null;
+  const activePoll = getPollByRoom(roomCode);
+
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
   }
@@ -181,9 +213,28 @@ app.get("/poll/results", (req, res) => {
   res.json({ votes: activePoll.votes });
 });
 
+// Endpoint to check if room exists (for validation)
+app.get("/poll/validate-room", (req, res) => {
+  const roomCode = req.query.roomCode || null;
+
+  if (!roomCode) {
+    return res.status(400).json({ error: "Room code is required" });
+  }
+
+  const activePoll = getPollByRoom(roomCode);
+
+  if (!activePoll) {
+    return res.status(404).json({ exists: false, error: "Room not found" });
+  }
+
+  res.json({ exists: true, roomCode });
+});
+
 // Timer routes
 app.post("/poll/timer/start", (req, res) => {
-  const { duration, createdBy } = req.body; // duration in seconds
+  const { duration, createdBy, roomCode } = req.body; // duration in seconds
+
+  const activePoll = getPollByRoom(roomCode);
 
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
@@ -214,7 +265,6 @@ app.post("/poll/timer/start", (req, res) => {
   const endTime = Date.now() + duration * 1000;
   activePoll.timerActive = true;
   activePoll.timerEndTime = endTime;
-  timerEndTime = endTime;
 
   res.json({
     success: true,
@@ -224,6 +274,9 @@ app.post("/poll/timer/start", (req, res) => {
 });
 
 app.get("/poll/timer", (req, res) => {
+  const roomCode = req.query.roomCode || null;
+  const activePoll = getPollByRoom(roomCode);
+
   if (!activePoll) {
     return res.status(404).json({ error: "No active poll found" });
   }

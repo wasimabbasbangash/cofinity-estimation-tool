@@ -1,11 +1,15 @@
-import { connectToDatabase, getActivePoll } from '../../../lib/db.js';
+import {
+  connectToDatabase,
+  getActivePoll,
+  generateRoomCode,
+} from "../../../lib/db.js";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { question, options, createdBy } = req.body;
+  const { question, options, createdBy, roomCode } = req.body;
 
   if (!question || !options || !createdBy) {
     return res
@@ -19,14 +23,21 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
-    const polls = db.collection('polls');
+    const polls = db.collection("polls");
 
-    // Delete all existing polls (only one poll at a time)
-    await polls.deleteMany({});
+    // Use provided room code or generate new one
+    let finalRoomCode = roomCode;
+    if (!finalRoomCode) {
+      finalRoomCode = generateRoomCode();
+    }
+
+    // Delete existing polls in this room (only one poll per room at a time)
+    await polls.deleteMany({ roomCode: finalRoomCode });
 
     // Create new poll
     const newPoll = {
       id: Date.now().toString(),
+      roomCode: finalRoomCode,
       question,
       options,
       createdBy,
@@ -40,10 +51,9 @@ export default async function handler(req, res) {
 
     await polls.insertOne(newPoll);
 
-    res.json({ success: true, poll: newPoll });
+    res.json({ success: true, poll: newPoll, roomCode: finalRoomCode });
   } catch (error) {
-    console.error('Error creating poll:', error);
-    res.status(500).json({ error: 'Failed to create poll' });
+    console.error("Error creating poll:", error);
+    res.status(500).json({ error: "Failed to create poll" });
   }
 }
-

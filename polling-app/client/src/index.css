@@ -108,15 +108,16 @@ body::before {
 }
 
 .navbar {
-  background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
+  background: linear-gradient(135deg, #ff6bf2 0%, #4597d1 100%);
   border-bottom: 4px solid var(--border-color);
   box-shadow: var(--shadow-cartoon);
-  padding: 20px 0;
+  padding: 20px 10px;
   position: sticky;
   top: 0;
   z-index: 100;
   width: 100%;
   margin-bottom: 20px;
+  border-radius: 20px;
   animation: slideDown 0.5s ease-out;
 }
 
