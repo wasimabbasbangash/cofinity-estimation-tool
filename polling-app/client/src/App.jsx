@@ -17,6 +17,7 @@ function App() {
   const [hasJoinedRoom, setHasJoinedRoom] = useState(false); // Track if user has joined/created a room
   const [showJoinForm, setShowJoinForm] = useState(false); // Show join room form
   const [joinRoomCode, setJoinRoomCode] = useState(""); // Room code input for joining
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0); // Track consecutive fetch errors
 
   // Create Poll Form State
   const [question, setQuestion] = useState("");
@@ -177,9 +178,18 @@ function App() {
   useEffect(() => {
     // Poll for updates every second, but only if a poll exists
     // If no poll exists, poll less frequently (every 5 seconds)
+    // If there are errors, poll even less frequently (every 10 seconds)
     if (!roomCode) return;
 
-    const pollInterval = poll ? 1000 : 5000; // Poll every 1s if poll exists, 5s if not
+    // Adjust polling interval based on errors
+    let pollInterval;
+    if (consecutiveErrors >= 5) {
+      pollInterval = 10000; // Poll every 10s if many errors
+    } else if (poll) {
+      pollInterval = 1000; // Poll every 1s if poll exists
+    } else {
+      pollInterval = 5000; // Poll every 5s if no poll
+    }
 
     const interval = setInterval(() => {
       if (!isCreatingNew) {
@@ -190,7 +200,10 @@ function App() {
       }
     }, pollInterval);
     return () => clearInterval(interval);
-  }, [isCreatingNew, poll, roomCode]);
+  }, [isCreatingNew, poll, roomCode, consecutiveErrors]);
+
+  // Track consecutive errors to reduce polling on repeated failures
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
 
   const fetchTimer = async () => {
     if (!poll || poll.status !== "open" || !roomCode) return;
@@ -230,19 +243,31 @@ function App() {
         // 404 is expected when no poll exists - this is normal, not an error
         setPoll(null);
         setLoading(false);
+        setConsecutiveErrors(0); // Reset error count on successful 404
         return;
       }
-      if (!response.ok) throw new Error("Failed to fetch poll");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to fetch poll`);
+      }
       const data = await response.json();
       setPoll(data);
       setLoading(false);
+      setConsecutiveErrors(0); // Reset error count on success
     } catch (err) {
+      // Track consecutive errors
+      setConsecutiveErrors((prev) => prev + 1);
+
       // Only show error if it's not a network error and not a 404
       if (
         err.message !== "Failed to fetch poll" &&
         !err.message.includes("404")
       ) {
-        setError(err.message);
+        // Only show error after a few failures to avoid spam
+        if (consecutiveErrors >= 3) {
+          setError(
+            `Connection issue: ${err.message}. Check your database connection.`
+          );
+        }
       }
       setLoading(false);
     }

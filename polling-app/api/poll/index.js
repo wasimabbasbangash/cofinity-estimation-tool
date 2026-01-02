@@ -18,7 +18,9 @@ export default async function handler(req, res) {
     if (activePoll.status === "open") {
       const { votes, ...pollWithoutVotes } = activePoll;
       // Include voter names only (without values) so frontend can check if user has voted
-      const voterNames = activePoll.votes.map((vote) => ({ name: vote.name }));
+      const voterNames = (activePoll.votes || []).map((vote) => ({
+        name: vote.name,
+      }));
       return res.json({
         ...pollWithoutVotes,
         voterNames: voterNames,
@@ -29,6 +31,10 @@ export default async function handler(req, res) {
     res.json(activePoll);
   } catch (error) {
     console.error("Error fetching poll:", error);
-    res.status(500).json({ error: "Failed to fetch poll" });
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      error: "Failed to fetch poll",
+      message: error.message,
+    });
   }
 }

@@ -3,26 +3,36 @@ import { MongoClient } from "mongodb";
 let cachedClient = null;
 let cachedDb = null;
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB || "polling-app";
-
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable");
-}
-
 export async function connectToDatabase() {
   if (cachedClient && cachedDb) {
     return { client: cachedClient, db: cachedDb };
   }
 
-  const client = await MongoClient.connect(MONGODB_URI);
+  const MONGODB_URI = process.env.MONGODB_URI;
+  const MONGODB_DB = process.env.MONGODB_DB || "polling-app";
 
-  const db = client.db(MONGODB_DB);
+  if (!MONGODB_URI) {
+    throw new Error(
+      "MONGODB_URI environment variable is not set. Please add it in Vercel Settings → Environment Variables."
+    );
+  }
 
-  cachedClient = client;
-  cachedDb = db;
+  try {
+    const client = await MongoClient.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+    });
 
-  return { client, db };
+    const db = client.db(MONGODB_DB);
+
+    cachedClient = client;
+    cachedDb = db;
+
+    return { client, db };
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    throw new Error(`Failed to connect to MongoDB: ${error.message}`);
+  }
 }
 
 export async function getActivePoll(db, roomCode = null) {
