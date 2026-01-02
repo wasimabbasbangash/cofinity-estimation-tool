@@ -202,9 +202,6 @@ function App() {
     return () => clearInterval(interval);
   }, [isCreatingNew, poll, roomCode, consecutiveErrors]);
 
-  // Track consecutive errors to reduce polling on repeated failures
-  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
-
   const fetchTimer = async () => {
     if (!poll || poll.status !== "open" || !roomCode) return;
 
