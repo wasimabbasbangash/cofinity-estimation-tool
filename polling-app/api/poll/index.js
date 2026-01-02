@@ -1,4 +1,4 @@
-import { connectToDatabase, getActivePoll } from "../../../lib/db.js";
+import { connectToDatabase, getActivePoll } from "../../lib/db.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
