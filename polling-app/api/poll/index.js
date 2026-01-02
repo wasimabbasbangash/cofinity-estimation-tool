@@ -7,20 +7,41 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
-    const roomCode = req.query.roomCode || null;
+    const roomCode = req.query.roomCode
+      ? String(req.query.roomCode).trim()
+      : null;
+
+    if (!roomCode || roomCode.length === 0) {
+      return res.status(400).json({ error: "roomCode is required" });
+    }
+
+    console.log("Fetching poll for roomCode:", roomCode);
     const activePoll = await getActivePoll(db, roomCode);
+    console.log("Active poll found:", activePoll ? "yes" : "no");
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
     }
 
+    // Ensure activePoll is a valid object
+    if (typeof activePoll !== "object" || activePoll === null) {
+      console.error("Invalid poll object:", activePoll);
+      return res.status(500).json({ error: "Invalid poll data structure" });
+    }
+
     // If poll is open, return poll with voter names only (for close button check)
     if (activePoll.status === "open") {
-      const { votes, ...pollWithoutVotes } = activePoll;
+      // Safely extract votes and create poll without votes
+      const votes = Array.isArray(activePoll.votes) ? activePoll.votes : [];
+      const { votes: _, ...pollWithoutVotes } = activePoll;
+
       // Include voter names only (without values) so frontend can check if user has voted
-      const voterNames = (activePoll.votes || []).map((vote) => ({
-        name: vote.name,
-      }));
+      const voterNames = votes
+        .filter((vote) => vote && typeof vote === "object" && vote.name)
+        .map((vote) => ({
+          name: vote.name,
+        }));
+
       return res.json({
         ...pollWithoutVotes,
         voterNames: voterNames,
@@ -28,13 +49,20 @@ export default async function handler(req, res) {
     }
 
     // If poll is closed, return full poll with votes
-    res.json(activePoll);
+    // Ensure votes is always an array
+    const pollToReturn = {
+      ...activePoll,
+      votes: Array.isArray(activePoll.votes) ? activePoll.votes : [],
+    };
+    res.json(pollToReturn);
   } catch (error) {
     console.error("Error fetching poll:", error);
     console.error("Error stack:", error.stack);
+    console.error("Request query:", req.query);
     res.status(500).json({
       error: "Failed to fetch poll",
       message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 }

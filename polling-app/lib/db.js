@@ -36,34 +36,37 @@ export async function connectToDatabase() {
 }
 
 export async function getActivePoll(db, roomCode = null) {
-  const polls = db.collection("polls");
+  try {
+    const polls = db.collection("polls");
 
-  if (!roomCode) {
-    // Legacy support: get the most recent open poll, or most recent closed if no open
+    if (!roomCode) {
+      // Legacy support: get the most recent open poll, or most recent closed if no open
+      let activePoll = await polls.findOne(
+        { status: "open" },
+        { sort: { createdAt: -1 } }
+      );
+
+      if (!activePoll) {
+        activePoll = await polls.findOne({}, { sort: { createdAt: -1 } });
+      }
+
+      return activePoll;
+    }
+
+    // Room-based: get poll by room code
+    // Get the most recent open poll for this room, or most recent closed if no open
     let activePoll = await polls.findOne(
-      { status: "open" },
+      { roomCode: roomCode },
       { sort: { createdAt: -1 } }
     );
 
-    if (!activePoll) {
-      activePoll = await polls.findOne({}, { sort: { createdAt: -1 } });
-    }
-
-    return activePoll;
+    // If no poll found with roomCode, return null (don't fallback to any poll)
+    return activePoll || null;
+  } catch (error) {
+    console.error("Error in getActivePoll:", error);
+    console.error("roomCode:", roomCode);
+    throw error;
   }
-
-  // Room-based: get poll by room code
-  // Get the most recent open poll for this room, or most recent closed if no open
-  let activePoll = await polls.findOne(
-    { roomCode, status: "open" },
-    { sort: { createdAt: -1 } }
-  );
-
-  if (!activePoll) {
-    activePoll = await polls.findOne({ roomCode }, { sort: { createdAt: -1 } });
-  }
-
-  return activePoll;
 }
 
 export function generateRoomCode() {
