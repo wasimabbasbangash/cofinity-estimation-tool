@@ -147,13 +147,23 @@ function App() {
       }
     }
 
-    // Load avatar from localStorage
+    // Load avatar from localStorage, or assign a random default if none exists
     const savedAvatar = localStorage.getItem("voterAvatar");
     if (savedAvatar !== null && savedAvatar !== "") {
       const avatarIndex = parseInt(savedAvatar, 10);
-      if (!isNaN(avatarIndex)) {
+      if (!isNaN(avatarIndex) && avatarIndex >= 0 && avatarIndex < 24) {
         setSelectedAvatar(avatarIndex);
+      } else {
+        // Invalid avatar index, assign a random default
+        const randomAvatar = Math.floor(Math.random() * 24);
+        setSelectedAvatar(randomAvatar);
+        localStorage.setItem("voterAvatar", randomAvatar.toString());
       }
+    } else {
+      // No saved avatar, assign a random default
+      const randomAvatar = Math.floor(Math.random() * 24);
+      setSelectedAvatar(randomAvatar);
+      localStorage.setItem("voterAvatar", randomAvatar.toString());
     }
   }, []);
 
@@ -165,8 +175,11 @@ function App() {
   }, [roomCode]);
 
   useEffect(() => {
-    // Poll for updates every second
+    // Poll for updates every second, but only if a poll exists
+    // If no poll exists, poll less frequently (every 5 seconds)
     if (!roomCode) return;
+
+    const pollInterval = poll ? 1000 : 5000; // Poll every 1s if poll exists, 5s if not
 
     const interval = setInterval(() => {
       if (!isCreatingNew) {
@@ -175,7 +188,7 @@ function App() {
           fetchTimer();
         }
       }
-    }, 1000);
+    }, pollInterval);
     return () => clearInterval(interval);
   }, [isCreatingNew, poll, roomCode]);
 
@@ -214,6 +227,7 @@ function App() {
     try {
       const response = await fetch(`${API_BASE}/poll?roomCode=${roomCode}`);
       if (response.status === 404) {
+        // 404 is expected when no poll exists - this is normal, not an error
         setPoll(null);
         setLoading(false);
         return;
@@ -223,7 +237,11 @@ function App() {
       setPoll(data);
       setLoading(false);
     } catch (err) {
-      if (err.message !== "Failed to fetch poll") {
+      // Only show error if it's not a network error and not a 404
+      if (
+        err.message !== "Failed to fetch poll" &&
+        !err.message.includes("404")
+      ) {
         setError(err.message);
       }
       setLoading(false);
@@ -830,7 +848,11 @@ function App() {
                     }}
                   >
                     {timeRemaining === 0
-                      ? "⏰ Time's up! Voting has ended. Creator can restart the timer."
+                      ? isCreator
+                        ? "⏰ Time's up! Voting has ended. Use the buttons above to restart the timer."
+                        : "⏰ Time's up! Voting has ended. Creator can restart the timer."
+                      : isCreator
+                      ? "⏱️ Start the timer using the buttons above to enable voting for participants."
                       : "⏳ Waiting for the creator to start the timer..."}
                   </div>
                 )}
@@ -838,7 +860,11 @@ function App() {
                 {/* Avatar Selection */}
                 <AvatarPicker
                   selectedAvatar={selectedAvatar}
-                  onSelectAvatar={setSelectedAvatar}
+                  onSelectAvatar={(avatarIndex) => {
+                    setSelectedAvatar(avatarIndex);
+                    // Save to localStorage when avatar is changed
+                    localStorage.setItem("voterAvatar", avatarIndex.toString());
+                  }}
                   showPicker={showAvatarPicker}
                   onToggle={() => setShowAvatarPicker(!showAvatarPicker)}
                 />
