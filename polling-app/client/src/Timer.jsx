@@ -79,7 +79,8 @@ const Timer = ({ timeRemaining, timerActive }) => {
   }, [timerActive, timeRemaining]);
 
   const playTick = (timeLeft) => {
-    if (!audioContextRef.current || timeLeft <= 0) return;
+    // Only play tick sound when 10 seconds or less remaining
+    if (!audioContextRef.current || timeLeft <= 0 || timeLeft > 10) return;
 
     const ctx = audioContextRef.current;
 
@@ -106,8 +107,8 @@ const Timer = ({ timeRemaining, timerActive }) => {
       oscillator.frequency.value = 1000;
       oscillator.type = "sine";
 
-      // Louder ticks in last 10 seconds
-      const volume = timeLeft <= 10 ? 0.3 : 0.2;
+      // Clock ticking volume (only plays in last 10 seconds)
+      const volume = 0.3;
       gainNode.gain.setValueAtTime(volume, ctx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
 

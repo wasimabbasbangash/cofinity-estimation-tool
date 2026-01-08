@@ -1,16 +1,15 @@
-import { connectToDatabase, getActivePoll } from "../../../lib/db.js";
+import { connectToDatabase, getActivePoll } from '../../../lib/db.js';
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { userName } = req.body;
 
   try {
     const { db } = await connectToDatabase();
-    const { roomCode } = req.body;
-    const activePoll = await getActivePoll(db, roomCode);
+    const activePoll = await getActivePoll(db);
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
@@ -26,7 +25,7 @@ export default async function handler(req, res) {
         .json({ error: "User name is required to close the poll" });
     }
 
-    const polls = db.collection("polls");
+    const polls = db.collection('polls');
 
     // Update poll status
     await polls.updateOne(
@@ -34,15 +33,12 @@ export default async function handler(req, res) {
       { $set: { status: "closed", closedBy: userName.trim() } }
     );
 
-    const updatedPoll = {
-      ...activePoll,
-      status: "closed",
-      closedBy: userName.trim(),
-    };
+    const updatedPoll = { ...activePoll, status: "closed", closedBy: userName.trim() };
 
     res.json({ success: true, poll: updatedPoll });
   } catch (error) {
-    console.error("Error closing poll:", error);
-    res.status(500).json({ error: "Failed to close poll" });
+    console.error('Error closing poll:', error);
+    res.status(500).json({ error: 'Failed to close poll' });
   }
 }
+

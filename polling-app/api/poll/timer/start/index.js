@@ -1,15 +1,15 @@
-import { connectToDatabase, getActivePoll } from "../../../../lib/db.js";
+import { connectToDatabase, getActivePoll } from '../../../../lib/db.js';
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { duration, createdBy, roomCode } = req.body; // duration in seconds
+  const { duration, createdBy } = req.body; // duration in seconds
 
   try {
     const { db } = await connectToDatabase();
-    const activePoll = await getActivePoll(db, roomCode);
+    const activePoll = await getActivePoll(db);
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     const endTime = Date.now() + duration * 1000;
-    const polls = db.collection("polls");
+    const polls = db.collection('polls');
 
     // Update poll with timer
     await polls.updateOne(
@@ -52,7 +52,8 @@ export default async function handler(req, res) {
       timerActive: true,
     });
   } catch (error) {
-    console.error("Error starting timer:", error);
-    res.status(500).json({ error: "Failed to start timer" });
+    console.error('Error starting timer:', error);
+    res.status(500).json({ error: 'Failed to start timer' });
   }
 }
+

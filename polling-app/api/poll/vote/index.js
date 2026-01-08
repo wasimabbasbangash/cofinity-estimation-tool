@@ -1,8 +1,8 @@
-import { connectToDatabase, getActivePoll } from "../../../lib/db.js";
+import { connectToDatabase, getActivePoll } from '../../../lib/db.js';
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { name, value, avatar } = req.body;
@@ -15,9 +15,8 @@ export default async function handler(req, res) {
 
   try {
     const { db } = await connectToDatabase();
-    const { roomCode } = req.body;
-    const activePoll = await getActivePoll(db, roomCode);
-    const polls = db.collection("polls");
+    const activePoll = await getActivePoll(db);
+    const polls = db.collection('polls');
 
     if (!activePoll) {
       return res.status(404).json({ error: "No active poll found" });
@@ -53,9 +52,7 @@ export default async function handler(req, res) {
     }
 
     // Find existing vote by name and update, or add new vote
-    const existingVoteIndex = activePoll.votes.findIndex(
-      (v) => v.name === name
-    );
+    const existingVoteIndex = activePoll.votes.findIndex((v) => v.name === name);
 
     let updatedVotes;
     if (existingVoteIndex >= 0) {
@@ -68,10 +65,7 @@ export default async function handler(req, res) {
       };
     } else {
       // Add new vote
-      updatedVotes = [
-        ...activePoll.votes,
-        { name, value, avatar: avatar || null },
-      ];
+      updatedVotes = [...activePoll.votes, { name, value, avatar: avatar || null }];
     }
 
     // Update poll in database
@@ -84,7 +78,8 @@ export default async function handler(req, res) {
 
     res.json({ success: true, poll: updatedPoll });
   } catch (error) {
-    console.error("Error voting:", error);
-    res.status(500).json({ error: "Failed to submit vote" });
+    console.error('Error voting:', error);
+    res.status(500).json({ error: 'Failed to submit vote' });
   }
 }
+
